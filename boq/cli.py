@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
         "vat_rate": str(vat_rate),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "valid_rows": len(valid_lines),
-        "excluded_rows": len(result.excluded_rows),
+        "excluded_row_count": len(result.excluded_rows),
     }
     report = build_report(result, meta)
 

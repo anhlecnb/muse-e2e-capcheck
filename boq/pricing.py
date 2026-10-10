@@ -36,7 +36,9 @@ def compute_estimate(
 
     Returns:
         EstimationResult với groups sắp xếp theo tên, errors và
-        excluded_rows (sorted, unique).
+        excluded_rows — mỗi phần tử là {"source", "line_number"},
+        sorted theo (source, line_number), unique (F5: giữ source để
+        dòng 5 của boq.csv và dòng 5 của prices.csv không bị nhầm).
 
         Chính sách làm tròn (khóa bởi tests/test_audit.py::F4):
         material/labor/subtotal của grand total là cộng dồn các group;
@@ -80,5 +82,10 @@ def compute_estimate(
         groups=dict(sorted(groups.items())),
         totals=totals,
         errors=list(errors),
-        excluded_rows=sorted({e.line_number for e in errors}),
+        excluded_rows=[
+            {"source": source, "line_number": line_number}
+            for source, line_number in sorted(
+                {(e.source, e.line_number) for e in errors}
+            )
+        ],
     )
