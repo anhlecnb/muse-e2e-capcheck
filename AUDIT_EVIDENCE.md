@@ -111,3 +111,35 @@ round_half_up(0.5) = 1 (tổng 2), nhưng VAT grand = round_half_up(10×0.10)
 = 1. **Quyết định:** VAT grand làm tròn một lần trên grand subtotal
 (chuẩn kế toán); Σ VAT group có thể lệch vài đồng — là hành vi đúng theo
 thiết kế, đã ghi vào docstring `compute_estimate`, README và AUDIT_REPORT.
+
+---
+
+## F5 — `excluded_rows` mất thông tin file nguồn (dòng 5 boq.csv vs dòng 5 prices.csv bị gộp)
+
+**RED** (`python3 -m unittest tests.test_audit.F5ExcludedRowsLoseSourceTest`, trước fix):
+
+```text
+FAIL: test_cli_meta_excluded_row_count_key (...)
+FAIL: test_excluded_rows_keep_source (...)
+FAIL: test_report_excluded_rows_json_has_source (...)
+----------------------------------------------------------------------
+Ran 3 tests in 0.005s
+FAILED (failures=3)
+```
+
+Nguyên nhân: `excluded_rows=sorted({e.line_number for e in errors})` —
+set int dedupe xuyên file. Thêm phát hiện phụ: `meta["excluded_rows"]` là
+COUNT (int) trong khi `report["excluded_rows"]` là LIST — trùng tên khác kiểu.
+
+**GREEN** (sau fix — `excluded_rows` là list `{"source","line_number"}`
+sorted theo (source, line_number); meta đổi thành `excluded_row_count`;
+`format_summary` in `excluded rows: [boq:5, prices:3]`):
+
+```text
+Ran 78 tests in 0.699s
+OK
+```
+Các test hiện có được cập nhật sang contract mới (chặt hơn, có kiểm tra
+source — không nới lỏng assertion nào): `test_excluded_rows_from_errors`,
+`test_errors_serialize`, `test_errors_line`, `test_main_warnings_to_stderr`,
+`test_main_writes_out_report`.

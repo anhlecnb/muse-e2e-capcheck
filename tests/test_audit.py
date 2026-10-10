@@ -210,3 +210,73 @@ class F4RoundingPolicyTest(unittest.TestCase):
         self.assertEqual(result.totals.subtotal, Decimal("9"))
         self.assertEqual(result.totals.vat, Decimal("1"))
         self.assertEqual(result.totals.total, Decimal("10"))
+
+
+class F5ExcludedRowsLoseSourceTest(unittest.TestCase):
+    """F5 (software-bug, major): excluded_rows chỉ lưu số dòng (int) rồi
+    dedupe — lỗi ở boq.csv dòng 5 và prices.csv dòng 5 bị gộp thành [5],
+    không truy vết được dòng nào thuộc file nào."""
+
+    def test_excluded_rows_keep_source(self):
+        from boq.models import DataError
+        errors = [
+            DataError(line_number=5, code="X1", message="m1", source="boq"),
+            DataError(line_number=5, code="X2", message="m2", source="prices"),
+            DataError(line_number=3, code="X3", message="m3", source="boq"),
+        ]
+        result = compute_estimate([make_line()], errors)
+        self.assertEqual(
+            result.excluded_rows,
+            [
+                {"source": "boq", "line_number": 3},
+                {"source": "boq", "line_number": 5},
+                {"source": "prices", "line_number": 5},
+            ],
+        )
+
+    def test_report_excluded_rows_json_has_source(self):
+        from boq.models import DataError, EstimationResult, GroupSummary
+        from boq.report import build_report
+        g = GroupSummary()
+        errors = [
+            DataError(line_number=5, code="X1", message="m1", source="boq"),
+            DataError(line_number=5, code="X2", message="m2", source="prices"),
+        ]
+        result = compute_estimate([], errors)
+        report = build_report(
+            EstimationResult(groups={"G": g}, totals=g, errors=errors,
+                             excluded_rows=result.excluded_rows),
+            {},
+        )
+        self.assertEqual(
+            report["excluded_rows"],
+            [
+                {"source": "boq", "line_number": 5},
+                {"source": "prices", "line_number": 5},
+            ],
+        )
+
+    def test_cli_meta_excluded_row_count_key(self):
+        # meta['excluded_rows'] đang là COUNT (int) trong khi report['excluded_rows']
+        # là LIST — trùng tên khác kiểu. Quyết định: meta dùng 'excluded_row_count'.
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        bpath = os.path.join(tmp.name, "boq.csv")
+        ppath = os.path.join(tmp.name, "prices.csv")
+        with open(bpath, "w", encoding="utf-8") as f:
+            f.write("code,description,unit,quantity,group\n"
+                    "A-001,Item A,m2,2,G1\n")
+        with open(ppath, "w", encoding="utf-8") as f:
+            f.write("code,material_unit_price,labor_unit_price,unit\n"
+                    "A-001,120000,30000,m2\n")
+        out, err = io.StringIO(), io.StringIO()
+        from contextlib import redirect_stderr, redirect_stdout
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = cli_mod.main(["--boq", bpath, "--prices", ppath,
+                               "--out", os.path.join(tmp.name, "r.json")])
+        self.assertEqual(rc, 0)
+        with open(os.path.join(tmp.name, "r.json"), encoding="utf-8") as f:
+            report = json.load(f)
+        self.assertIn("excluded_row_count", report["meta"])
+        self.assertNotIn("excluded_rows", report["meta"])
+        self.assertEqual(report["meta"]["excluded_row_count"], 0)

@@ -117,7 +117,8 @@ class ComputeEstimateTest(unittest.TestCase):
         self.assertEqual(list(result.groups.keys()), ["Alpha", "Mid", "Zeta"])
 
     def test_excluded_rows_from_errors(self):
-        """excluded_rows = sorted unique line_number từ errors; line hợp lệ vẫn tính."""
+        """excluded_rows = sorted unique (source, line_number) từ errors;
+        dòng 5 của boq và dòng 3 của prices là 2 mục riêng biệt (F5)."""
         errors = [
             DataError(line_number=5, code="X1", message="no price", source="boq"),
             DataError(line_number=3, code="X2", message="bad unit", source="prices"),
@@ -125,7 +126,13 @@ class ComputeEstimateTest(unittest.TestCase):
         ]
         lines = [make_line("A", "2", "120000", "30000", "G1", 1)]
         result = compute_estimate(lines, errors)
-        self.assertEqual(result.excluded_rows, [3, 5])
+        self.assertEqual(
+            result.excluded_rows,
+            [
+                {"source": "boq", "line_number": 5},
+                {"source": "prices", "line_number": 3},
+            ],
+        )
         self.assertEqual(result.groups["G1"].total, Decimal("330000"))
         self.assertEqual(len(result.errors), 3)
 
