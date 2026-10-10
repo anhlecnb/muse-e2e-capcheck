@@ -35,14 +35,27 @@ def compute_estimate(
         vat_rate: Thuế suất VAT, phải nằm trong [0, 1].
 
     Returns:
-        EstimationResult với groups sắp xếp theo tên, totals cộng dồn
-        các group, errors và excluded_rows (sorted, unique).
+        EstimationResult với groups sắp xếp theo tên, errors và
+        excluded_rows — mỗi phần tử là {"source", "line_number"},
+        sorted theo (source, line_number), unique (F5: giữ source để
+        dòng 5 của boq.csv và dòng 5 của prices.csv không bị nhầm).
+
+        Chính sách làm tròn (khóa bởi tests/test_audit.py::F4):
+        material/labor/subtotal của grand total là cộng dồn các group;
+        nhưng VAT grand = round_half_up(grand_subtotal × vat_rate) — làm
+        tròn MỘT lần ở cấp cuối (chuẩn kế toán), không phải tổng VAT các
+        group. Do đó Σ VAT group có thể lệch vài đồng so với VAT grand;
+        total = subtotal + vat luôn đúng ở mọi cấp.
 
     Raises:
-        ValueError: Nếu vat_rate âm hoặc lớn hơn 1.
+        ValueError: Nếu vat_rate không phải số hữu hạn, âm, hoặc lớn hơn 1.
+            (Kiểm tra `is_finite()` trước vì so sánh thứ tự với NaN
+            raise `InvalidOperation` thay vì trả về False.)
     """
-    if vat_rate < 0 or vat_rate > 1:
-        raise ValueError(f"vat_rate must be within [0, 1], got {vat_rate!r}")
+    if not vat_rate.is_finite() or vat_rate < 0 or vat_rate > 1:
+        raise ValueError(
+            f"vat_rate must be a finite number within [0, 1], got {vat_rate!r}"
+        )
 
     groups: dict[str, GroupSummary] = {}
     for line in valid_lines:
@@ -69,5 +82,10 @@ def compute_estimate(
         groups=dict(sorted(groups.items())),
         totals=totals,
         errors=list(errors),
-        excluded_rows=sorted({e.line_number for e in errors}),
+        excluded_rows=[
+            {"source": source, "line_number": line_number}
+            for source, line_number in sorted(
+                {(e.source, e.line_number) for e in errors}
+            )
+        ],
     )

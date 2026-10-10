@@ -88,7 +88,11 @@ def format_summary(result: EstimationResult, meta: dict[str, Any]) -> str:
         f"GRAND TOTAL: material={t.material} labor={t.labor} "
         f"subtotal={t.subtotal} vat={t.vat} total={t.total}"
     )
+    excluded = ", ".join(
+        f"{entry['source']}:{entry['line_number']}"
+        for entry in result.excluded_rows
+    )
     lines.append(
-        f"Errors: {len(result.errors)} (excluded rows: {result.excluded_rows})"
+        f"Errors: {len(result.errors)} (excluded rows: [{excluded}])"
     )
     return "\n".join(lines)

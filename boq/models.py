@@ -13,6 +13,7 @@ DUPLICATE_CODE = "DUPLICATE_CODE"
 MISSING_PRICE = "MISSING_PRICE"
 UNIT_MISMATCH = "UNIT_MISMATCH"
 NEGATIVE_QUANTITY = "NEGATIVE_QUANTITY"
+NEGATIVE_PRICE = "NEGATIVE_PRICE"
 INVALID_NUMBER = "INVALID_NUMBER"
 INVALID_ROW = "INVALID_ROW"
 
@@ -76,4 +77,6 @@ class EstimationResult:
     groups: dict  # group name -> GroupSummary, sorted by group name
     totals: GroupSummary
     errors: list  # list[DataError], in line order
-    excluded_rows: list  # list[int] of excluded line numbers, sorted
+    excluded_rows: list  # list[{"source": str, "line_number": int}],
+    # sorted by (source, line_number), unique — F5: source is kept so a
+    # bad line 5 in boq.csv and a bad line 5 in prices.csv stay distinct

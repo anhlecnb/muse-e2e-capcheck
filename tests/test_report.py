@@ -23,7 +23,8 @@ def make_result() -> EstimationResult:
                       total=Decimal("396000"))
     errors = [DataError(line_number=5, code="X1", message="no price", source="boq")]
     return EstimationResult(groups={"G1": g1}, totals=g1,
-                            errors=errors, excluded_rows=[5])
+                            errors=errors,
+                            excluded_rows=[{"source": "boq", "line_number": 5}])
 
 
 class BuildReportTest(unittest.TestCase):
@@ -55,7 +56,8 @@ class BuildReportTest(unittest.TestCase):
         self.assertEqual(report["errors"],
                          [{"line_number": 5, "code": "X1",
                            "message": "no price", "source": "boq"}])
-        self.assertEqual(report["excluded_rows"], [5])
+        self.assertEqual(report["excluded_rows"],
+                         [{"source": "boq", "line_number": 5}])
 
     def test_report_is_json_serializable(self):
         """json.dumps phải thành công trên toàn bộ report."""
@@ -92,7 +94,7 @@ class FormatSummaryTest(unittest.TestCase):
 
     def test_errors_line(self):
         summary = format_summary(make_result(), {})
-        self.assertIn("Errors: 1 (excluded rows: [5])", summary)
+        self.assertIn("Errors: 1 (excluded rows: [boq:5])", summary)
 
     def test_no_raw_decimal_objects(self):
         """Không in object thô kiểu Decimal('...')."""

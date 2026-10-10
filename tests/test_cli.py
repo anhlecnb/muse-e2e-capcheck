@@ -88,7 +88,7 @@ class MainTest(unittest.TestCase):
         self.assertEqual(report["meta"]["boq_file"], "b.csv")
         self.assertEqual(report["meta"]["prices_file"], "p.csv")
         self.assertEqual(report["meta"]["valid_rows"], 2)
-        self.assertEqual(report["meta"]["excluded_rows"], 0)
+        self.assertEqual(report["meta"]["excluded_row_count"], 0)
         self.assertIn("generated_at", report["meta"])
 
     def test_main_warnings_to_stderr(self):
@@ -98,7 +98,7 @@ class MainTest(unittest.TestCase):
                                 errors=errors)
         self.assertEqual(rc, 0)  # không strict -> vẫn 0
         self.assertIn("WARNING", err)
-        self.assertIn("Errors: 1 (excluded rows: [5])", out)
+        self.assertIn("Errors: 1 (excluded rows: [boq:5])", out)
 
     def test_main_strict_returns_2_on_errors(self):
         errors = [DataError(line_number=5, code=MISSING_PRICE,

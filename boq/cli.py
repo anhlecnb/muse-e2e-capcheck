@@ -14,7 +14,7 @@ import sys
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 
-from .parsing import parse_boq_csv, parse_prices_csv
+from .parsing import parse_boq_csv, parse_prices_csv, CsvFormatError
 from .pricing import compute_estimate
 from .report import build_report, format_summary, write_report
 from .validation import validate
@@ -57,10 +57,16 @@ def main(argv: list[str] | None = None) -> int:
     except FileNotFoundError:
         print(f"ERROR: boq file not found: {args.boq}", file=sys.stderr)
         return 1
+    except CsvFormatError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
     try:
         price_map, price_errors = parse_prices_csv(args.prices)
     except FileNotFoundError:
         print(f"ERROR: prices file not found: {args.prices}", file=sys.stderr)
+        return 1
+    except CsvFormatError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
     valid_lines, validation_errors = validate(boq_rows, price_map)
@@ -78,12 +84,17 @@ def main(argv: list[str] | None = None) -> int:
         "vat_rate": str(vat_rate),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "valid_rows": len(valid_lines),
-        "excluded_rows": len(result.excluded_rows),
+        "excluded_row_count": len(result.excluded_rows),
     }
     report = build_report(result, meta)
 
     if args.out:
-        write_report(report, args.out)
+        try:
+            write_report(report, args.out)
+        except OSError as exc:
+            print(f"ERROR: cannot write report to {args.out}: {exc}",
+                  file=sys.stderr)
+            return 1
 
     print(format_summary(result, meta))
 

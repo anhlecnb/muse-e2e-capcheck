@@ -13,6 +13,7 @@ from boq.models import (
     DUPLICATE_CODE,
     INVALID_NUMBER,
     INVALID_ROW,
+    NEGATIVE_PRICE,
     NEGATIVE_QUANTITY,
 )
 from boq.parsing import parse_boq_csv, parse_prices_csv
@@ -254,7 +255,7 @@ class ParsePricesCsvTest(CsvTestCase):
         self.assertEqual(price_map, {})
         self.assertEqual(len(errors), 1)
         e = errors[0]
-        self.assertEqual(e.code, INVALID_NUMBER)
+        self.assertEqual(e.code, NEGATIVE_PRICE)
         self.assertEqual(e.source, "prices")
         self.assertIn("negative", e.message.lower())
 

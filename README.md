@@ -96,20 +96,32 @@ Các cảnh báo dữ liệu (nếu có) được in ra **stderr** dạng:
 WARNING: [line 9] MISSING_PRICE: Missing price at line 9: no price entry for code 'D-007' (source=boq)
 ```
 
-## 6 loại lỗi dữ liệu
+## 7 loại lỗi dữ liệu
 
 | Mã lỗi | Nguồn | Ý nghĩa |
 |---|---|---|
-| `INVALID_ROW` | parsing | Dòng sai số cột so với header (thiếu/thừa cột) |
-| `INVALID_NUMBER` | parsing | Giá trị số không parse được (`abc`, `NaN`, `Infinity`,...) |
-| `NEGATIVE_QUANTITY` | parsing | `quantity` âm trong file BOQ (giá âm cũng bị loại ở file prices) |
-| `DUPLICATE_CODE` | validation | `code` lặp lại — giữ dòng xuất hiện đầu tiên, loại các dòng sau |
+| `INVALID_ROW` | parsing | Dòng sai số cột so với header (thiếu/thừa cột), `code` rỗng |
+| `INVALID_NUMBER` | parsing | Giá trị số không parse được (`abc`, `NaN`, `Infinity`, `1,000`,...) |
+| `NEGATIVE_QUANTITY` | parsing | `quantity` âm trong file BOQ |
+| `NEGATIVE_PRICE` | parsing | Đơn giá âm trong file đơn giá |
+| `DUPLICATE_CODE` | validation | `code` lặp lại — giữ dòng xuất hiện đầu tiên, loại các dòng sau (áp dụng cho cả 2 file) |
 | `MISSING_PRICE` | validation | `code` trong BOQ không có dòng đơn giá tương ứng |
 | `UNIT_MISMATCH` | validation | Đơn vị trong BOQ khác đơn vị trong file giá (so sánh phân biệt hoa/thường) |
 
 Mỗi dòng lỗi chỉ nhận **tối đa 1 lỗi** (ưu tiên: parse trước, rồi
 `DUPLICATE_CODE` > `MISSING_PRICE` > `UNIT_MISMATCH`); các dòng lỗi bị loại
-khỏi tính toán và liệt kê trong `excluded_rows`.
+khỏi tính toán và liệt kê trong `excluded_rows` dưới dạng
+`{"source": "boq"|"prices", "line_number": N}` — giữ thông tin file nguồn
+để dòng 5 của file BOQ và dòng 5 của file giá không bị nhầm lẫn.
+
+Ghi chú định dạng file:
+- File có **BOM** (UTF-8-BOM do Excel xuất) được đọc trong suốt.
+- Header sai/thiếu cột hoặc file rỗng → lỗi gọn `ERROR: Invalid header in ...`,
+  mã thoát `1` (không in traceback).
+- Mã (`code`) và đơn vị (`unit`) so sánh **phân biệt hoa/thường**;
+  `"A-001"` và `"a-001"` là hai mã khác nhau.
+- Số phân tách hàng nghìn kiểu `"1,000"` bị từ chối (`INVALID_NUMBER`) —
+  không đoán mò ý nghĩa.
 
 ## Chạy test
 
@@ -135,7 +147,7 @@ trên Python 3.12 cho mỗi push / pull request.
     "vat_rate": "0.10",
     "generated_at": "2026-10-10T09:46:59.123456+00:00",
     "valid_rows": 2,
-    "excluded_rows": 0
+    "excluded_row_count": 0
   },
   "groups": {
     "Nhom A": {
@@ -160,15 +172,22 @@ trên Python 3.12 cho mỗi push / pull request.
 
 Lưu ý: mọi số tiền trong JSON là **string** (không phải number) để giữ
 nguyên precision của `Decimal`; `vat_rate` trong `meta` cũng là string.
+`excluded_rows` là danh sách `{"source", "line_number"}`; `meta` dùng
+`excluded_row_count` (số lượng) để tránh trùng tên khác kiểu.
 
 ## Lưu ý về VAT
 
-- `--vat` nhận thuế suất dạng thập phân: `0.10` = 10%, `0` = không thuế.
-  Giá trị ngoài khoảng `[0, 1]` → mã thoát `2`.
-- Mọi số tiền được làm tròn về **đồng VND** (số nguyên) theo `ROUND_HALF_UP`.
-- VAT được tính **riêng cho từng group** (`vat = round(subtotal_group × rate)`)
-  rồi mới cộng dồn thành grand total; grand total VAT là
-  `round(subtotal_grand × rate)`. Với số liệu kiểm chứng:
+- `--vat` nhận thuế suất dạng thập phân: `0.10` = 10%, `0` = không thuế,
+  `1` = 100%. Giá trị ngoài khoảng `[0, 1]` (kể cả nhập `10` với ý 10%)
+  → mã thoát `2` kèm gợi ý khoảng hợp lệ. `NaN`/`Infinity` bị từ chối.
+- Mọi số tiền được làm tròn về **đồng VND** (số nguyên) theo `ROUND_HALF_UP`
+  (0.5 làm tròn lên — đúng nghiệp vụ tiền Việt, không dùng banker's rounding).
+- VAT được tính **riêng cho từng group** (`vat = round(subtotal_group × rate)`).
+  VAT của grand total được làm tròn **một lần** trên grand subtotal
+  (`vat = round(subtotal_grand × rate)`, chuẩn kế toán) — **không** phải tổng
+  VAT các group. Do đó tổng VAT các group có thể lệch vài đồng so với VAT
+  grand do làm tròn; đây là hành vi đúng theo thiết kế (đã khóa bằng test F4).
+  Luôn đúng ở mọi cấp: `total = subtotal + vat`. Với số liệu kiểm chứng:
   material = 2×120000 + 3×15000 = **285000**,
   labor = 2×30000 + 3×5000 = **75000**,
   subtotal = **360000**, VAT 10% = **36000**, total = **396000**.
