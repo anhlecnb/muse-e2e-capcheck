@@ -21,6 +21,7 @@ from boq.models import (
     DUPLICATE_CODE,
     INVALID_NUMBER,
     INVALID_ROW,
+    NEGATIVE_PRICE,
     NEGATIVE_QUANTITY,
     BoqRow,
     DataError,
@@ -295,7 +296,7 @@ def parse_prices_csv(
                 errors.append(
                     DataError(
                         line_number=line_number,
-                        code=INVALID_NUMBER,
+                        code=NEGATIVE_PRICE,
                         message=(
                             f"Invalid negative price at line {line_number} "
                             f"for code '{code}': material_unit_price="
