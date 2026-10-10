@@ -35,8 +35,15 @@ def compute_estimate(
         vat_rate: Thuế suất VAT, phải nằm trong [0, 1].
 
     Returns:
-        EstimationResult với groups sắp xếp theo tên, totals cộng dồn
-        các group, errors và excluded_rows (sorted, unique).
+        EstimationResult với groups sắp xếp theo tên, errors và
+        excluded_rows (sorted, unique).
+
+        Chính sách làm tròn (khóa bởi tests/test_audit.py::F4):
+        material/labor/subtotal của grand total là cộng dồn các group;
+        nhưng VAT grand = round_half_up(grand_subtotal × vat_rate) — làm
+        tròn MỘT lần ở cấp cuối (chuẩn kế toán), không phải tổng VAT các
+        group. Do đó Σ VAT group có thể lệch vài đồng so với VAT grand;
+        total = subtotal + vat luôn đúng ở mọi cấp.
 
     Raises:
         ValueError: Nếu vat_rate không phải số hữu hạn, âm, hoặc lớn hơn 1.
