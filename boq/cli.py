@@ -14,7 +14,7 @@ import sys
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 
-from .parsing import parse_boq_csv, parse_prices_csv
+from .parsing import parse_boq_csv, parse_prices_csv, CsvFormatError
 from .pricing import compute_estimate
 from .report import build_report, format_summary, write_report
 from .validation import validate
@@ -57,10 +57,16 @@ def main(argv: list[str] | None = None) -> int:
     except FileNotFoundError:
         print(f"ERROR: boq file not found: {args.boq}", file=sys.stderr)
         return 1
+    except CsvFormatError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
     try:
         price_map, price_errors = parse_prices_csv(args.prices)
     except FileNotFoundError:
         print(f"ERROR: prices file not found: {args.prices}", file=sys.stderr)
+        return 1
+    except CsvFormatError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
     valid_lines, validation_errors = validate(boq_rows, price_map)

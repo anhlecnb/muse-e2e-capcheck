@@ -33,15 +33,23 @@ BOQ_HEADER = ["code", "description", "unit", "quantity", "group"]
 PRICES_HEADER = ["code", "material_unit_price", "labor_unit_price", "unit"]
 
 
+class CsvFormatError(ValueError):
+    """Lỗi cấu trúc file CSV không dùng được (sai header, file rỗng...).
+
+    Là subclass của ValueError nên các test cũ dùng assertRaises(ValueError)
+    vẫn đúng; CLI bắt riêng lớp này để in lỗi gọn thay vì traceback.
+    """
+
+
 def _is_blank_row(raw: List[str]) -> bool:
     """Return True if every field of the raw row is empty or whitespace."""
     return all(cell.strip() == "" for cell in raw)
 
 
 def _check_header(actual: List[str], expected: List[str], path: PathLike) -> None:
-    """Raise ValueError if the CSV header does not match ``expected`` exactly."""
+    """Raise CsvFormatError if the CSV header does not match ``expected``."""
     if actual is None or [cell.strip() for cell in actual] != expected:
-        raise ValueError(
+        raise CsvFormatError(
             f"Invalid header in {path}: expected {expected}, got {actual!r}"
         )
 
@@ -67,7 +75,8 @@ def parse_boq_csv(path: PathLike) -> Tuple[List[BoqRow], List[DataError]]:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the header is wrong or misordered.
+        CsvFormatError: If the header is wrong, misordered, or the file
+            is empty.
     """
     rows: List[BoqRow] = []
     errors: List[DataError] = []
@@ -189,7 +198,8 @@ def parse_prices_csv(
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the header is wrong or misordered.
+        CsvFormatError: If the header is wrong, misordered, or the file
+            is empty.
     """
     price_map: Dict[str, PriceRow] = {}
     errors: List[DataError] = []
