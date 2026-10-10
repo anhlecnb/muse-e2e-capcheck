@@ -39,10 +39,14 @@ def compute_estimate(
         các group, errors và excluded_rows (sorted, unique).
 
     Raises:
-        ValueError: Nếu vat_rate âm hoặc lớn hơn 1.
+        ValueError: Nếu vat_rate không phải số hữu hạn, âm, hoặc lớn hơn 1.
+            (Kiểm tra `is_finite()` trước vì so sánh thứ tự với NaN
+            raise `InvalidOperation` thay vì trả về False.)
     """
-    if vat_rate < 0 or vat_rate > 1:
-        raise ValueError(f"vat_rate must be within [0, 1], got {vat_rate!r}")
+    if not vat_rate.is_finite() or vat_rate < 0 or vat_rate > 1:
+        raise ValueError(
+            f"vat_rate must be a finite number within [0, 1], got {vat_rate!r}"
+        )
 
     groups: dict[str, GroupSummary] = {}
     for line in valid_lines:
