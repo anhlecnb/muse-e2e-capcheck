@@ -118,3 +118,47 @@ class F2BadHeaderTracebackTest(AuditCsvCase):
         self.assertEqual(rc, 1)
         self.assertIn("ERROR", err)
         self.assertNotIn("Traceback", err)
+
+
+class F3BomFileTest(AuditCsvCase):
+    """F3 (software-bug, major): file CSV có BOM (Excel hay xuất UTF-8-BOM)
+    -> ký tự \\ufeff dính vào header -> CsvFormatError. Kỳ vọng: parse
+    trong suốt, không bắt user phải xử lý BOM."""
+
+    def test_parse_boq_csv_with_bom(self):
+        from boq.parsing import parse_boq_csv
+        path = self.write(
+            "boq.csv",
+            "\ufeffcode,description,unit,quantity,group\n"
+            "B1,Concrete,m3,10,G1\n",
+        )
+        rows, errors = parse_boq_csv(path)
+        self.assertEqual(errors, [])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].code, "B1")
+
+    def test_parse_prices_csv_with_bom(self):
+        from boq.parsing import parse_prices_csv
+        path = self.write(
+            "prices.csv",
+            "\ufeffcode,material_unit_price,labor_unit_price,unit\n"
+            "B1,100,20,m3\n",
+        )
+        price_map, errors = parse_prices_csv(path)
+        self.assertEqual(errors, [])
+        self.assertEqual(price_map["B1"].material_unit_price, Decimal("100"))
+
+    def test_cli_end_to_end_with_bom_files(self):
+        boq = self.write(
+            "boq.csv",
+            "\ufeffcode,description,unit,quantity,group\n"
+            "A-001,Item A,m2,2,G1\n",
+        )
+        prices = self.write(
+            "prices.csv",
+            "\ufeffcode,material_unit_price,labor_unit_price,unit\n"
+            "A-001,120000,30000,m2\n",
+        )
+        rc, out, err = self.run_cli(["--boq", boq, "--prices", prices])
+        self.assertEqual(rc, 0, msg=err)
+        self.assertIn("330000", out)  # (2*120000+2*30000)*1.1

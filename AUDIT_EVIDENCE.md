@@ -64,3 +64,29 @@ OK
 ```
 Lưu ý: 2 test ban đầu tôi viết sai thứ tự ghi file tạm (valid_pair ghi đè
 file lỗi) nên fail giả sau khi fix; đã sửa test, không liên quan logic fix.
+
+---
+
+## F3 — File CSV có BOM (UTF-8-BOM từ Excel) bị từ chối
+
+**RED** (`python3 -m unittest tests.test_audit.F3BomFileTest`, trước fix):
+
+```text
+ERROR: test_parse_boq_csv_with_bom (...)
+ERROR: test_parse_prices_csv_with_bom (...)
+FAIL: test_cli_end_to_end_with_bom_files (...)
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+FAILED (failures=1, errors=2)
+```
+
+Ký tự `\ufeff` dính vào tên cột đầu (`'\ufeffcode'`) -> header check fail ->
+`CsvFormatError`. File Excel xuất ra rất hay có BOM nên đây là lỗi thực tế.
+
+**GREEN** (sau fix — đọc bằng `encoding="utf-8-sig"` ở cả hai hàm parse,
+tự loại BOM nếu có, không ảnh hưởng file không BOM):
+
+```text
+Ran 3 tests in 0.006s
+OK
+```
