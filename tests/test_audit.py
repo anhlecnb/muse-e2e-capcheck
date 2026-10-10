@@ -162,3 +162,51 @@ class F3BomFileTest(AuditCsvCase):
         rc, out, err = self.run_cli(["--boq", boq, "--prices", prices])
         self.assertEqual(rc, 0, msg=err)
         self.assertIn("330000", out)  # (2*120000+2*30000)*1.1
+
+
+class F4RoundingPolicyTest(unittest.TestCase):
+    """F4 (business-issue): VAT tính trên từng group rồi cộng lại có thể
+    lệch ±1đ/group so với VAT tính trên grand subtotal — do làm tròn
+    ROUND_HALF_UP ở mỗi cấp.
+
+    QUYẾT ĐỊNH CHÍNH SÁCH (khóa bằng test dưới đây):
+    - VAT của group = round_half_up(group_subtotal × vat_rate)
+    - VAT grand = round_half_up(grand_subtotal × vat_rate)  (làm tròn 1 lần
+      cuối — chuẩn kế toán), KHÔNG phải tổng VAT các group.
+    - Do đó Σ VAT group có thể khác VAT grand vài đồng; đây là hành vi
+      đúng theo thiết kế, không phải bug. README/AUDIT_REPORT ghi rõ.
+    """
+
+    def test_group_vat_sum_may_differ_from_grand_vat_by_rounding(self):
+        # 2 group, mỗi group subtotal = 5đ, VAT 10%:
+        # group VAT = round(0.5) = 1 (HALF_UP) -> tổng 2
+        # grand VAT = round(10 × 0.10) = round(1.0) = 1
+        lines = [
+            make_line("A", "5", "1", "0", "G1", 2),
+            make_line("B", "5", "1", "0", "G2", 3),
+        ]
+        result = compute_estimate(lines, [], vat_rate=Decimal("0.10"))
+        self.assertEqual(result.groups["G1"].vat, Decimal("1"))
+        self.assertEqual(result.groups["G2"].vat, Decimal("1"))
+        self.assertEqual(result.totals.vat, Decimal("1"))
+        # nhất quán nội bộ từng cấp: total = subtotal + vat
+        self.assertEqual(result.groups["G1"].total, Decimal("6"))
+        self.assertEqual(result.totals.total, Decimal("11"))
+        self.assertEqual(
+            result.totals.total,
+            result.totals.subtotal + result.totals.vat,
+        )
+
+    def test_grand_vat_is_single_rounding_of_grand_subtotal(self):
+        # 3 group subtotal lẻ: VAT grand luôn = round(Σsubtotal × rate),
+        # không phụ thuộc cách chia group
+        lines = [
+            make_line("A", "1", "3", "0", "G1", 2),  # subtotal 3
+            make_line("B", "1", "3", "0", "G2", 3),  # subtotal 3
+            make_line("C", "1", "3", "0", "G3", 4),  # subtotal 3
+        ]
+        result = compute_estimate(lines, [], vat_rate=Decimal("0.10"))
+        # grand subtotal 9 -> VAT round(0.9) = 1
+        self.assertEqual(result.totals.subtotal, Decimal("9"))
+        self.assertEqual(result.totals.vat, Decimal("1"))
+        self.assertEqual(result.totals.total, Decimal("10"))

@@ -90,3 +90,24 @@ tự loại BOM nếu có, không ảnh hưởng file không BOM):
 Ran 3 tests in 0.006s
 OK
 ```
+
+---
+
+## F4 — Chính sách làm tròn: Σ VAT group vs VAT grand (business-issue)
+
+**Không có red phase** — đây không phải bug mà là điểm nghiệp vụ cần quyết
+định. Hành vi hiện tại đã đúng đắn, test dưới đây KHÓA chính sách:
+
+```text
+test_group_vat_sum_may_differ_from_grand_vat_by_rounding ... ok
+test_grand_vat_is_single_rounding_of_grand_subtotal ... ok
+----------------------------------------------------------------------
+Ran 2 tests in 0.004s
+OK
+```
+
+Ví dụ khóa lại: 2 group subtotal=5đ, VAT 10% -> VAT mỗi group =
+round_half_up(0.5) = 1 (tổng 2), nhưng VAT grand = round_half_up(10×0.10)
+= 1. **Quyết định:** VAT grand làm tròn một lần trên grand subtotal
+(chuẩn kế toán); Σ VAT group có thể lệch vài đồng — là hành vi đúng theo
+thiết kế, đã ghi vào docstring `compute_estimate`, README và AUDIT_REPORT.
