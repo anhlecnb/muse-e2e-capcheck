@@ -311,3 +311,18 @@ class F6NegativePriceCodeTest(AuditCsvCase):
         self.assertEqual(price_map, {})
         self.assertEqual(len(errors), 1)
         self.assertEqual(errors[0].code, "NEGATIVE_PRICE")
+
+
+class F7UnwritableOutPathTest(AuditCsvCase):
+    """F7 (software-bug, minor): --out trỏ vào thư mục không tồn tại ->
+    OSError từ write_report không được bắt -> traceback."""
+
+    def test_cli_unwritable_out_exits_1_without_traceback(self):
+        boq, prices = self.valid_pair()
+        bad_out = os.path.join(
+            self._tmp.name, "khong-ton-tai", "report.json")
+        rc, out, err = self.run_cli(
+            ["--boq", boq, "--prices", prices, "--out", bad_out])
+        self.assertEqual(rc, 1)
+        self.assertIn("ERROR", err)
+        self.assertNotIn("Traceback", err)

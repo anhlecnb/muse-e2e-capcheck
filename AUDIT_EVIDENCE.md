@@ -170,3 +170,26 @@ OK
 ```
 Test hiện có `test_parse_prices_csv_negative_price` được cập nhật sang mã
 mới (chính xác hơn, không nới lỏng).
+
+---
+
+## F7 — `--out` vào đường dẫn không ghi được -> `OSError` traceback
+
+**RED** (`python3 -m unittest tests.test_audit.F7UnwritableOutPathTest`, trước fix):
+
+```text
+ERROR: test_cli_unwritable_out_exits_1_without_traceback (...)
+----------------------------------------------------------------------
+Ran 1 test in 0.004s
+FAILED (errors=1)
+```
+
+`write_report` raise `OSError` (thư mục cha không tồn tại) không được bắt.
+
+**GREEN** (sau fix — bắt `OSError`, in `ERROR: cannot write report to ...`,
+thoát mã 1):
+
+```text
+Ran 81 tests in 0.743s
+OK
+```
