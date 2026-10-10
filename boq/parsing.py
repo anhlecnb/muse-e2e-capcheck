@@ -81,7 +81,7 @@ def parse_boq_csv(path: PathLike) -> Tuple[List[BoqRow], List[DataError]]:
     rows: List[BoqRow] = []
     errors: List[DataError] = []
 
-    with open(path, "r", newline="", encoding="utf-8") as f:
+    with open(path, "r", newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         _check_header(next(reader, None), BOQ_HEADER, path)
 
@@ -204,7 +204,7 @@ def parse_prices_csv(
     price_map: Dict[str, PriceRow] = {}
     errors: List[DataError] = []
 
-    with open(path, "r", newline="", encoding="utf-8") as f:
+    with open(path, "r", newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         _check_header(next(reader, None), PRICES_HEADER, path)
 
