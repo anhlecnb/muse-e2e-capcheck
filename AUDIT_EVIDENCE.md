@@ -193,3 +193,17 @@ thoát mã 1):
 Ran 81 tests in 0.743s
 OK
 ```
+
+---
+
+## F8/F9 — Locking test cho biên `--vat` và chính sách case-sensitivity
+
+**Không có red phase** — đây là business-issue/policy locks, không phải bug.
+7 test khóa hành vi đúng hiện tại (Infinity bị từ chối, khoảng trắng quanh
+`--vat` được chấp nhận, `1` = 100%, `"10"` bị từ chối kèm gợi ý `[0, 1]`,
+mã khác hoa/thường → `MISSING_PRICE`, `"1,000"` → `INVALID_NUMBER`):
+
+```text
+Ran 88 tests in 0.746s
+OK
+```
