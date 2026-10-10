@@ -326,3 +326,79 @@ class F7UnwritableOutPathTest(AuditCsvCase):
         self.assertEqual(rc, 1)
         self.assertIn("ERROR", err)
         self.assertNotIn("Traceback", err)
+
+
+class F8VatEdgeCasesTest(AuditCsvCase):
+    """F8: các biên của --vat chưa được khóa — Infinity, khoảng trắng,
+    vat=1 (100%), vat='10' (ý người dùng 10% nhưng phải là 0.10)."""
+
+    def test_compute_estimate_rejects_infinite_vat_rate(self):
+        with self.assertRaises(ValueError):
+            compute_estimate([make_line()], [], vat_rate=Decimal("Infinity"))
+
+    def test_cli_vat_infinity_exits_2(self):
+        boq, prices = self.valid_pair()
+        rc, out, err = self.run_cli(
+            ["--boq", boq, "--prices", prices, "--vat", "Infinity"])
+        self.assertEqual(rc, 2)
+        self.assertNotIn("Traceback", err)
+
+    def test_cli_vat_with_whitespace_ok(self):
+        boq, prices = self.valid_pair()
+        rc, out, err = self.run_cli(
+            ["--boq", boq, "--prices", prices, "--vat", "  0.10  "])
+        self.assertEqual(rc, 0, msg=err)
+
+    def test_vat_rate_one_means_100_percent(self):
+        # Quyết định: --vat là phân số thập phân trong [0,1]; 1 = 100%.
+        # Ai nhập 10 (ý 10%) sẽ bị từ chối rõ ràng thay vì tính 1000%.
+        result = compute_estimate([make_line("A", "2", "120000", "30000", "G1", 2)],
+                                  [], vat_rate=Decimal("1"))
+        self.assertEqual(result.groups["G1"].vat, Decimal("300000"))
+        self.assertEqual(result.groups["G1"].total, Decimal("600000"))
+
+    def test_cli_vat_ten_rejected_with_range_hint(self):
+        boq, prices = self.valid_pair()
+        rc, out, err = self.run_cli(
+            ["--boq", boq, "--prices", prices, "--vat", "10"])
+        self.assertEqual(rc, 2)
+        self.assertIn("[0, 1]", err)
+
+
+class F9CaseSensitivityPolicyTest(AuditCsvCase):
+    """F9 (business-issue): mã và đơn vị so sánh case-sensitive.
+    Quyết định: giữ nguyên (explicit mismatch tốt hơn silent merge),
+    khóa bằng test + ghi README."""
+
+    def test_code_case_mismatch_is_missing_price(self):
+        from boq.parsing import parse_boq_csv, parse_prices_csv
+        from boq.validation import validate
+        boq = self.write(
+            "boq.csv",
+            "code,description,unit,quantity,group\n"
+            "a-001,Item A,m2,2,G1\n",  # thường
+        )
+        prices = self.write(
+            "prices.csv",
+            "code,material_unit_price,labor_unit_price,unit\n"
+            "A-001,120000,30000,m2\n",  # HOA
+        )
+        rows, _ = parse_boq_csv(boq)
+        pmap, _ = parse_prices_csv(prices)
+        valid, errors = validate(rows, pmap)
+        self.assertEqual(valid, [])
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].code, "MISSING_PRICE")
+
+    def test_thousand_separator_is_rejected_not_silently_parsed(self):
+        # "1,000" mơ hồ (1000 hay 1.000?) -> từ chối rõ ràng, không đoán.
+        from boq.parsing import parse_boq_csv
+        path = self.write(
+            "boq.csv",
+            "code,description,unit,quantity,group\n"
+            "B1,Item B,m2,\"1,000\",G1\n",
+        )
+        rows, errors = parse_boq_csv(path)
+        self.assertEqual(rows, [])
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].code, "INVALID_NUMBER")
