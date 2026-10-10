@@ -81,3 +81,40 @@ class F1NanVatRateTest(AuditCsvCase):
         self.assertEqual(rc, 2)
         self.assertIn("ERROR", err)
         self.assertNotIn("Traceback", err)
+
+
+class F2BadHeaderTracebackTest(AuditCsvCase):
+    """F2 (software-bug, major): header CSV sai / file rỗng -> ValueError
+    từ _check_header không được CLI bắt -> traceback thay vì lỗi gọn."""
+
+    def test_cli_bad_boq_header_exits_1_without_traceback(self):
+        _, prices = self.valid_pair()
+        boq = self.write(
+            "boq.csv",
+            "code,description,unit,quantity\n"  # thiếu cột group
+            "A-001,Item A,m2,2\n",
+        )
+        rc, out, err = self.run_cli(["--boq", boq, "--prices", prices])
+        self.assertEqual(rc, 1)
+        self.assertIn("ERROR", err)
+        self.assertNotIn("Traceback", err)
+
+    def test_cli_bad_prices_header_exits_1_without_traceback(self):
+        boq, _ = self.valid_pair()
+        prices = self.write(
+            "prices.csv",
+            "code,material_unit_price,labor_unit_price\n"  # thiếu cột unit
+            "A-001,120000,30000\n",
+        )
+        rc, out, err = self.run_cli(["--boq", boq, "--prices", prices])
+        self.assertEqual(rc, 1)
+        self.assertIn("ERROR", err)
+        self.assertNotIn("Traceback", err)
+
+    def test_cli_empty_boq_file_exits_1_without_traceback(self):
+        _, prices = self.valid_pair()
+        boq = self.write("boq.csv", "")
+        rc, out, err = self.run_cli(["--boq", boq, "--prices", prices])
+        self.assertEqual(rc, 1)
+        self.assertIn("ERROR", err)
+        self.assertNotIn("Traceback", err)
