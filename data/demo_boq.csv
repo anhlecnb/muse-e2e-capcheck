@@ -1,0 +1,13 @@
+code,description,unit,quantity,group
+D-001,Dao dat,m3,10,Nhom A
+D-002,Be tong lot,m3,5,Nhom A
+D-003,Cot thep,kg,100,Nhom B
+D-004,Van khuon,m2,20,Nhom B
+D-005,Gach xay,vien,500,Nhom C
+D-006,Vua trat,m3,8,Nhom C
+D-001,Dao dat (dong trung),m3,3,Nhom A
+D-007,Son nuoc,m2,15,Nhom B
+D-008,Cat vang,m3,12,Nhom C
+D-009,Xi mang,bao,-5,Nhom A
+D-010,Da hoc,m3,abc,Nhom B
+D-011,Gach lat,m2
