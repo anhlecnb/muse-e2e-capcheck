@@ -89,7 +89,12 @@ def main(argv: list[str] | None = None) -> int:
     report = build_report(result, meta)
 
     if args.out:
-        write_report(report, args.out)
+        try:
+            write_report(report, args.out)
+        except OSError as exc:
+            print(f"ERROR: cannot write report to {args.out}: {exc}",
+                  file=sys.stderr)
+            return 1
 
     print(format_summary(result, meta))
 
