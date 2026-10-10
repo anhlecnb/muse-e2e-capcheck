@@ -280,3 +280,34 @@ class F5ExcludedRowsLoseSourceTest(unittest.TestCase):
         self.assertIn("excluded_row_count", report["meta"])
         self.assertNotIn("excluded_rows", report["meta"])
         self.assertEqual(report["meta"]["excluded_row_count"], 0)
+
+
+class F6NegativePriceCodeTest(AuditCsvCase):
+    """F6 (software-bug, minor): giá âm trong prices.csv bị gán mã
+    INVALID_NUMBER chung chung (chỉ message mới nhắc 'negative').
+    Mã lỗi là contract cho máy đọc -> tách thành NEGATIVE_PRICE riêng."""
+
+    def test_negative_material_price_gets_dedicated_code(self):
+        from boq.parsing import parse_prices_csv
+        path = self.write(
+            "prices.csv",
+            "code,material_unit_price,labor_unit_price,unit\n"
+            "P1,-5,20,m3\n",
+        )
+        price_map, errors = parse_prices_csv(path)
+        self.assertEqual(price_map, {})
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].code, "NEGATIVE_PRICE")
+        self.assertEqual(errors[0].source, "prices")
+
+    def test_negative_labor_price_gets_dedicated_code(self):
+        from boq.parsing import parse_prices_csv
+        path = self.write(
+            "prices.csv",
+            "code,material_unit_price,labor_unit_price,unit\n"
+            "P1,100,-20,m3\n",
+        )
+        price_map, errors = parse_prices_csv(path)
+        self.assertEqual(price_map, {})
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].code, "NEGATIVE_PRICE")

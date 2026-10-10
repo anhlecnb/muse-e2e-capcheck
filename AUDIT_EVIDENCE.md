@@ -143,3 +143,30 @@ Các test hiện có được cập nhật sang contract mới (chặt hơn, có
 source — không nới lỏng assertion nào): `test_excluded_rows_from_errors`,
 `test_errors_serialize`, `test_errors_line`, `test_main_warnings_to_stderr`,
 `test_main_writes_out_report`.
+
+---
+
+## F6 — Giá âm dùng chung mã `INVALID_NUMBER` (thiếu mã lỗi riêng)
+
+**RED** (`python3 -m unittest tests.test_audit.F6NegativePriceCodeTest`, trước fix):
+
+```text
+FAIL: test_negative_labor_price_gets_dedicated_code (...)
+FAIL: test_negative_material_price_gets_dedicated_code (...)
+----------------------------------------------------------------------
+Ran 2 tests in 0.004s
+FAILED (failures=2)
+```
+
+Giá âm trong prices.csv bị gán `INVALID_NUMBER` — chỉ message mới nhắc
+"negative". Mã lỗi là contract cho máy đọc/lọc, nên tách riêng.
+
+**GREEN** (sau fix — thêm hằng `NEGATIVE_PRICE` trong `boq/models.py`,
+dùng cho nhánh giá âm trong `parse_prices_csv`):
+
+```text
+Ran 80 tests in 0.749s
+OK
+```
+Test hiện có `test_parse_prices_csv_negative_price` được cập nhật sang mã
+mới (chính xác hơn, không nới lỏng).
